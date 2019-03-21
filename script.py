@@ -23,6 +23,7 @@ last_fetched = None
 if DEBUG is not None:
     app.logger.warning('DEBUGGING ENABLED')
 
+
 def fetch_groups():
 
     payload = {'key': MEETUP_KEY}
@@ -36,6 +37,7 @@ def fetch_groups():
     groups_obj = json.loads(r.text)
 
     return groups_obj
+
 
 def fetch_events(groups):
 
@@ -68,28 +70,24 @@ def convert_event_obj_to_ical(e):
             #  'local_time', 'updated', 'utc_offset', 'waitlist_count',
             #  'yes_rsvp_count', 'venue', 'group', 'link', 'description', 'visibility'])
 
-    event = icalendar.Event()
-
-
-    time = e.get('time')
+    # get our event details out of the meetup object
+    time       = e.get('time')
     local_time = e.get('local_time')
-    day = e.get('local_date')
-    venue = e.get('venue')
-    link = e.get('link')
+    day        = e.get('local_date')
+    venue      = e.get('venue')
+    link       = e.get('link')
 
+    # create address string for the event
     address_string = ', '.join([venue.get('address_1', ''), venue.get('city', ''), venue.get('state', ''), venue.get('zip', '')])
-
     address_string = address_string[0: len(address_string)]
 
     time_string = local_time + " " + day
 
     start_time_object = datetime.strptime(time_string, '%H:%M %Y-%m-%d')
-
     end_time_object = start_time_object + timedelta(hours=2)
 
-
-    # summary is title
-    event.add('summary', e.get('name'))
+    event = icalendar.Event()
+    event.add('summary', e.get('name')) # 'summary' is the event title
     event.add('description', e.get('description') + '\n' + link)
     event.add('dtstart', start_time_object)
     event.add('dtend', end_time_object)
@@ -114,25 +112,21 @@ def ical_convert(events):
     return ret
 
 
-
 def fetch_feed():
     global ICAL_FEED
     global last_fetched
-
-    print('fuck-stdout')
-    app.logger.info('fuck-stdout')
-    app.logger.warning('fuck-warning')
-    return 'fuck'
 
     # is our data over a day old?
     # assumes both meetups, and your life, are planned over a day in advance
     old_data = False if last_fetched is None else datetime.now() - timedelta(hours=24) >= last_fetched
 
     if ICAL_FEED is None or last_fetched is None or old_data :
+        app.logger.warning("ICAL_FEED is either old, or nonexistent, fetching new data.")
         ICAL_FEED = ical_convert(fetch_events(fetch_groups()))
         last_fetched = datetime.now()
+
     else:
-        app.logger.info("ICAL_FEED is cached, returning cached copy")
+        app.logger.warning("ICAL_FEED is cached, returning cached copy")
 
     return ICAL_FEED
 
