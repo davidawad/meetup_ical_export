@@ -84,11 +84,8 @@ def convert_event_obj_to_ical(e):
     address_string = ', '.join([venue.get('address_1', ''), venue.get('city', ''), venue.get('state', ''), venue.get('zip', '')])
     address_string = address_string[0: len(address_string)]
 
-    #  turned out not to be needed, left for posterity
-    #  start_time_object = datetime.fromtimestamp(time, tz=pytz.timezone(OUTPUT_TIMEZONE))
     start_time_object = datetime.fromtimestamp(time, tz=pytz.timezone('UTC'))
 
-    #  end_time_object = start_time_object + timedelta(hours=3)
     end_time_object =  start_time_object + timedelta(hours=3) if duration is None else start_time_object + timedelta(milliseconds=duration)
 
     event = icalendar.Event()
