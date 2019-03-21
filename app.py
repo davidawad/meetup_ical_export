@@ -75,7 +75,7 @@ def convert_event_obj_to_ical(e):
 
     # get our event details out of the meetup object
     time       = int(e.get('time')) / 1000 # meetup api gives time in milliseconds since epoch
-    local_time = e.get('local_time')
+    duration = e.get('duration', None)
     day        = e.get('local_date')
     venue      = e.get('venue')
     link       = e.get('link')
@@ -88,7 +88,8 @@ def convert_event_obj_to_ical(e):
     #  start_time_object = datetime.fromtimestamp(time, tz=pytz.timezone(OUTPUT_TIMEZONE))
     start_time_object = datetime.fromtimestamp(time, tz=pytz.timezone('UTC'))
 
-    end_time_object = start_time_object + timedelta(hours=2)
+    #  end_time_object = start_time_object + timedelta(hours=3)
+    end_time_object =  start_time_object + timedelta(hours=3) if duration is None else start_time_object + timedelta(milliseconds=duration)
 
     event = icalendar.Event()
     event.add('summary', e.get('name')) # 'summary' is the event title
