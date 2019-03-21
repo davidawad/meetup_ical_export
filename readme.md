@@ -5,5 +5,15 @@ This script will find all the meetup groups you're a part of, and take all of th
 
 But now you don't have to go on meetup.com or say that you're going ahead of time. :)
 
+## setup
 
+### meetup api key
 Just export your meetup API key as `MEETUP_KEY`.
+
+### python depenencies
+```
+pip install -r requirements.txt
+```
+
+### run the script
+python script.py
