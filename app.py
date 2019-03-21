@@ -106,6 +106,7 @@ def ical_convert(events):
     cal = icalendar.Calendar()
     cal.add('prodid', '-//Meetup Events Export//mxm.dk//')
     cal.add('version', '2.0')
+    cal.add('X-WR-TIMEZONE', OUTPUT_TIMEZONE)
 
     for e in events:
         event = convert_event_obj_to_ical(e)
