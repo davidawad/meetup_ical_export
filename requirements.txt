@@ -42,15 +42,12 @@ python-dateutil==2.7.3
 pytz==2018.5
 requests==2.19.1
 requests-toolbelt==0.8.0
-scribd-downloader==1.1.1
 six==1.11.0
 snowballstemmer==1.2.1
 soupsieve==1.6.2
 TBB==0.1
 tinycss2==0.6.1
 urllib3==1.23
-virtualenv==16.0.0
-virtualfish==1.0.6
 WeasyPrint==44
 webencodings==0.5.1
 Werkzeug==0.15.1
