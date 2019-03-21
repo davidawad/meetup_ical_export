@@ -10,6 +10,8 @@ from flask import Flask, make_response
 
 
 ICS_FILENAME = 'meetup.ics'
+OUTPUT_TIMEZONE = 'America/New_York'
+
 MEETUP_KEY = os.environ.get('MEETUP_KEY', None)
 DEBUG = os.environ.get('DEBUG', False)
 
@@ -72,7 +74,7 @@ def convert_event_obj_to_ical(e):
             #  'yes_rsvp_count', 'venue', 'group', 'link', 'description', 'visibility'])
 
     # get our event details out of the meetup object
-    time       = e.get('time')
+    time       = int(e.get('time')) / 1000 # meetup api gives time in milliseconds since epoch
     local_time = e.get('local_time')
     day        = e.get('local_date')
     venue      = e.get('venue')
@@ -82,9 +84,8 @@ def convert_event_obj_to_ical(e):
     address_string = ', '.join([venue.get('address_1', ''), venue.get('city', ''), venue.get('state', ''), venue.get('zip', '')])
     address_string = address_string[0: len(address_string)]
 
-    time_string = local_time + " " + day
+    start_time_object = datetime.fromtimestamp(time, tz=pytz.timezone(OUTPUT_TIMEZONE))
 
-    start_time_object = datetime.strptime(time_string, '%H:%M %Y-%m-%d')
     end_time_object = start_time_object + timedelta(hours=2)
 
     event = icalendar.Event()
@@ -149,9 +150,9 @@ def calendar():
 
 
 # for quick local testing
-#  if __name__ == "__main__":
-    #  if not MEETUP_KEY: exit(3)
-    #  ical_string = ical_convert(fetch_events(fetch_groups()))
+if __name__ == "__main__":
+    if not MEETUP_KEY: exit(3)
+    ical_string = ical_convert(fetch_events(fetch_groups()))
 
-    #  print(ical_string)
+    print(ical_string)
 
