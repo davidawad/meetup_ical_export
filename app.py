@@ -134,7 +134,8 @@ def fetch_feed():
 # health check
 @app.route("/")
 def hello():
-        return "Hello World!"
+    app.logger.warning('Health Check; Hello World.')
+    return "Hello World!"
 
 
 @app.route('/calendar/')
