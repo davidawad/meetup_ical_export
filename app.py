@@ -20,7 +20,7 @@ ICAL_FEED = None
 # timestamp of the last time we requested meetup
 last_fetched = None
 
-if DEBUG is not None:
+if DEBUG:
     app.logger.warning('DEBUGGING ENABLED')
 
 
@@ -54,7 +54,8 @@ def fetch_events(groups):
         for event in events:
             events_obj.append(event)
 
-        # only take the first few events so we don't bother meetup too much :)
+        # if we're debugging, we should only take the
+        # first few events so we don't bother meetup too much.
         if DEBUG: break
 
     return events_obj
