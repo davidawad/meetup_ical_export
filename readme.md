@@ -34,3 +34,11 @@ Just make sure to set the Config Var `MEETUP_KEY` to your meetup api key.
 
 
 
+### Deploying if you're not in EST
+
+You'll need to do one extra step:
+
+look for the timezone string `'America/New_York'` in `app.py`, and make sure you adjust it to **your local timezone string**.
+
+If you're not sure what yours is just take a look at [this list](https://garygregory.wordpress.com/2013/06/18/what-are-the-java-timezone-ids/). I'm pretty confident almost all of them should be supported.
+
