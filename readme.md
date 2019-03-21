@@ -12,8 +12,10 @@ Just export your meetup API key as `MEETUP_KEY`.
 
 ### python depenencies
 ```
-pip install -r requirements.txt
+$ pip install -r requirements.txt
 ```
 
 ### run the script
-python script.py
+```
+$ python script.py
+```
