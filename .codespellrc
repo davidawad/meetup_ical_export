@@ -1,0 +1,3 @@
+[codespell]
+skip = ./.git,./.venv,./scripts,./.agent-hooks,./.claude,./CHANGELOG.md,./uv.lock
+ignore-words-list = ba,nd,te

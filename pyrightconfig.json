@@ -1,0 +1,20 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.13",
+  "include": [
+    "app.py",
+    "meetup_api.py",
+    "meetup_auth.py",
+    "tests"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    ".venv",
+    "scripts",
+    ".agent-hooks",
+    ".claude"
+  ],
+  "typeCheckingMode": "standard",
+  "reportMissingModuleSource": "none"
+}

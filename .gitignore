@@ -133,3 +133,6 @@ dmypy.json
 # meetup_ical_export: OAuth2 token cache (contains live refresh/access tokens)
 .token_cache.json
 *.token_cache.json
+
+# Heroku reads .python-version to pick the runtime — it must stay tracked.
+!.python-version
