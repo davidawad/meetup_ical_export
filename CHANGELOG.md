@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A second, credential-free data source.** Meetup's public per-group ICS
+  export (`meetup.com/<slug>/events/ical/`) is still live and unauthenticated,
+  so `MEETUP_EVENT_SOURCE=ics` + `MEETUP_GROUP_SLUGS=a,b,c` serves a feed with
+  no account setup at all. It can't discover memberships and Meetup omits
+  `LOCATION` from most events, so `graphql` remains the default — but this
+  works today with zero setup. `meetup_ics.py`, verified live end-to-end.
 - `meetup_auth.py`: authorization-code exchange, single-use-safe refresh-token
   rotation, and an atomic 0600 token cache at `.token_cache.json`.
 - `meetup_api.py`: GraphQL client with cursor pagination and per-group error

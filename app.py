@@ -3,10 +3,22 @@
 Subscribe a calendar app to ``/calendar/`` and you never have to open
 meetup.com again.
 
-Meetup retired the ``?key=<MEETUP_KEY>`` REST API, so the data layer is now
-OAuth2 + GraphQL (see :mod:`meetup_auth` and :mod:`meetup_api`). The
-ical-rendering half of this file is unchanged in spirit — only the field names
-it reads moved, because GraphQL's response shape differs from the old REST JSON.
+Meetup retired the ``?key=<MEETUP_KEY>`` REST API, so there are now two ways
+to get the data, picked with ``MEETUP_EVENT_SOURCE``:
+
+``graphql`` (default)
+    OAuth2 + GraphQL — see :mod:`meetup_auth` and :mod:`meetup_api`. Discovers
+    your group memberships automatically and returns full structured venue
+    addresses. Needs a one-time browser authorization.
+
+``ics``
+    Meetup's public per-group ICS export — see :mod:`meetup_ics`. No auth of
+    any kind, but it cannot discover memberships (you list the group slugs in
+    ``MEETUP_GROUP_SLUGS``) and Meetup omits ``LOCATION`` from most events.
+
+The ical-rendering half of this file is unchanged in spirit — only the field
+names it reads moved, because GraphQL's response shape differs from the old
+REST JSON.
 """
 
 from __future__ import annotations
@@ -24,10 +36,18 @@ from flask import Flask, make_response, redirect, request, session, url_for
 
 from meetup_api import MeetupAPIError, MeetupGraphQL, fetch_events, fetch_groups
 from meetup_auth import MeetupAuth, MeetupAuthError, OAuthConfig, TokenStore
+from meetup_ics import MeetupICSError, fetch_events_via_ics, parse_slugs
 
 ICS_FILENAME = "meetup.ics"
 OUTPUT_TIMEZONE = os.environ.get("OUTPUT_TIMEZONE", "America/New_York")
 PRODID = "-//Meetup Events Export//github.com/davidawad/meetup_ical_export//EN"
+
+# "graphql" (OAuth2, auto-discovers memberships) or "ics" (no auth, needs
+# MEETUP_GROUP_SLUGS). See the module docstring for the trade-off.
+EVENT_SOURCE = os.environ.get("MEETUP_EVENT_SOURCE", "graphql").strip().lower()
+# Explicit group slugs. Required for the "ics" source; with "graphql" it just
+# overrides membership auto-discovery.
+GROUP_SLUGS = parse_slugs(os.environ.get("MEETUP_GROUP_SLUGS"))
 
 DEBUG = os.environ.get("DEBUG", "").lower() in {"1", "true", "yes", "on"}
 # How long a rendered feed is served before we go back to Meetup. Assumes both
@@ -176,20 +196,40 @@ def convert_event_obj_to_ical(e: Mapping[str, Any]) -> icalendar.Event:
     return event
 
 
-def ical_convert(events: Sequence[Mapping[str, Any]]) -> bytes:
+def render_calendar(
+    vevents: Sequence[icalendar.Event],
+    *,
+    timezones: Sequence[icalendar.Timezone] = (),
+) -> bytes:
+    """Wrap VEVENTs in a VCALENDAR.
+
+    ``timezones`` carries the VTIMEZONE components that any ``DTSTART;TZID=...``
+    refers to. The GraphQL path doesn't need them (it emits absolute offsets);
+    the ICS path does, because Meetup writes TZID-qualified local times.
+    """
     cal = icalendar.Calendar()
     cal.add("prodid", PRODID)
     cal.add("version", "2.0")
     cal.add("X-WR-CALNAME", "Meetup")
     cal.add("X-WR-TIMEZONE", OUTPUT_TIMEZONE)
 
-    for e in events:
-        try:
-            cal.add_component(convert_event_obj_to_ical(e))
-        except (ValueError, TypeError) as exc:
-            app.logger.warning("skipping unconvertible event %r: %s", e.get("id"), exc)
+    for timezone in timezones:
+        cal.add_component(timezone)
+    for vevent in vevents:
+        cal.add_component(vevent)
 
     return cal.to_ical()
+
+
+def ical_convert(events: Sequence[Mapping[str, Any]]) -> bytes:
+    """Render a list of GraphQL ``Event`` nodes as a VCALENDAR."""
+    vevents = []
+    for e in events:
+        try:
+            vevents.append(convert_event_obj_to_ical(e))
+        except (ValueError, TypeError) as exc:
+            app.logger.warning("skipping unconvertible event %r: %s", e.get("id"), exc)
+    return render_calendar(vevents)
 
 
 # --------------------------------------------------------------------------
@@ -197,10 +237,16 @@ def ical_convert(events: Sequence[Mapping[str, Any]]) -> bytes:
 # --------------------------------------------------------------------------
 
 
-def build_feed() -> bytes:
+def build_feed_via_graphql() -> bytes:
+    """OAuth2 + GraphQL: auto-discovers memberships, full venue addresses."""
     client = get_client()
-    groups = fetch_groups(client)
-    app.logger.info("fetched %d group membership(s)", len(groups))
+    groups: Sequence[Mapping[str, Any]]
+    if GROUP_SLUGS:
+        groups = [{"urlname": slug} for slug in GROUP_SLUGS]
+        app.logger.info("using %d configured group slug(s)", len(groups))
+    else:
+        groups = fetch_groups(client)
+        app.logger.info("fetched %d group membership(s)", len(groups))
 
     events = fetch_events(
         client,
@@ -213,6 +259,39 @@ def build_feed() -> bytes:
     )
     app.logger.info("fetched %d upcoming event(s)", len(events))
     return ical_convert(events)
+
+
+def build_feed_via_ics() -> bytes:
+    """Meetup's public per-group ICS export: no auth, no membership discovery."""
+    if not GROUP_SLUGS:
+        raise MeetupICSError(
+            "MEETUP_EVENT_SOURCE=ics needs MEETUP_GROUP_SLUGS — the public ICS "
+            "export is per group and cannot discover which groups you belong to. "
+            "Set MEETUP_GROUP_SLUGS=slug1,slug2 (the bit after meetup.com/ in a "
+            "group's URL), or use MEETUP_EVENT_SOURCE=graphql."
+        )
+
+    slugs = GROUP_SLUGS[:1] if DEBUG else GROUP_SLUGS
+    events, timezones = fetch_events_via_ics(
+        slugs,
+        on_error=lambda slug, exc: app.logger.warning(
+            "skipping group %s: %s", slug, exc
+        ),
+    )
+    app.logger.info(
+        "fetched %d upcoming event(s) from %d group(s)", len(events), len(slugs)
+    )
+    return render_calendar(events, timezones=timezones)
+
+
+def build_feed() -> bytes:
+    if EVENT_SOURCE == "ics":
+        return build_feed_via_ics()
+    if EVENT_SOURCE != "graphql":
+        raise ValueError(
+            f"MEETUP_EVENT_SOURCE must be 'graphql' or 'ics', not {EVENT_SOURCE!r}"
+        )
+    return build_feed_via_graphql()
 
 
 def fetch_feed(*, now: dt.datetime | None = None) -> bytes:
@@ -240,6 +319,15 @@ def fetch_feed(*, now: dt.datetime | None = None) -> bytes:
 def hello():
     """Health check."""
     app.logger.info("Health Check; Hello World.")
+    if EVENT_SOURCE == "ics":
+        # The public ICS export needs no credentials at all.
+        return (
+            "Hello World!"
+            if GROUP_SLUGS
+            else (
+                "Hello World! MEETUP_EVENT_SOURCE=ics but MEETUP_GROUP_SLUGS is empty."
+            )
+        )
     try:
         authorized = get_auth().has_token()
     except MeetupAuthError:
@@ -293,7 +381,7 @@ def calendar():
         feed = fetch_feed()
     except MeetupAuthError as exc:
         return f"Not authorized with Meetup yet ({exc}). Visit /oauth2/login.", 401
-    except MeetupAPIError as exc:
+    except (MeetupAPIError, MeetupICSError) as exc:
         return f"Meetup API error: {exc}", 502
 
     response = make_response(feed)
@@ -311,6 +399,6 @@ if __name__ == "__main__":
     else:
         try:
             sys.stdout.write(build_feed().decode("utf-8"))
-        except (MeetupAuthError, MeetupAPIError) as exc:
+        except (MeetupAuthError, MeetupAPIError, MeetupICSError) as exc:
             sys.stderr.write(f"{exc}\n")
             raise SystemExit(3) from exc

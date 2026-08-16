@@ -8,20 +8,44 @@ any calendar app and never open meetup.com again.
 
 Meetup retired the old REST API. The `?key=<MEETUP_KEY>` query-param auth and
 the `api.meetup.com/self/groups` / `api.meetup.com/<group>/events` endpoints are
-gone. Everything now goes through:
+gone (`/self/groups` now 404s, and the old API-key signup page redirects to the
+GraphQL docs). The old calls were also plain `http://` with the key in a
+cleartext query string; everything is HTTPS now.
 
-- **OAuth2**, via Meetup's [Server
-  Flow](https://www.meetup.com/graphql/authentication/#p02-server-flow-section)
-  — `https://secure.meetup.com/oauth2/authorize` then
-  `https://secure.meetup.com/oauth2/access`.
-- **GraphQL**, at the single endpoint `https://api.meetup.com/gql-ext`
-  ([guide](https://www.meetup.com/graphql/guide/)).
+There are two ways to get the data, and you pick with `MEETUP_EVENT_SOURCE`:
 
-So `MEETUP_KEY` no longer exists. See setup below.
+| | `graphql` (default) | `ics` |
+| --- | --- | --- |
+| Auth needed | OAuth2, one-time browser authorization | **none at all** |
+| Finds your groups automatically | yes | no — you list slugs in `MEETUP_GROUP_SLUGS` |
+| Venue address on events | yes, full structured address | mostly missing — Meetup omits `LOCATION` |
+| Endpoint | `api.meetup.com/gql-ext` | `meetup.com/<slug>/events/ical/` |
+| Setup effort | register an OAuth consumer, authorize once | set one env var |
+
+`ics` is the quickest thing that works — it needs no account setup whatsoever
+and is verified working. `graphql` is the complete one: it's the only way to
+answer "which groups am I in?", and it's the only source with venue addresses.
+
+You can also mix them: set `MEETUP_GROUP_SLUGS` *and* leave the source on
+`graphql` to skip membership discovery while keeping GraphQL's richer event data.
 
 ## Setup
 
-### 1. Register an OAuth consumer (one time, manual)
+### Quick start, no account setup (`ics`)
+
+```sh
+pip install -r requirements.txt
+export MEETUP_EVENT_SOURCE=ics
+export MEETUP_GROUP_SLUGS='startup-valley,nyctechmixer,techinmotionnyc'
+python app.py > meetup.ics
+```
+
+That's the whole setup. The slug is the bit after `meetup.com/` in a group's
+URL. Skip to [Use it](#5-use-it).
+
+### Full setup with membership auto-discovery (`graphql`)
+
+#### 1. Register an OAuth consumer (one time, manual)
 
 Go to <https://www.meetup.com/api/oauth/list/> and create a consumer. You need
 to fill in:
@@ -34,7 +58,14 @@ to fill in:
 Meetup hands back a **client key** and a **client secret**. The redirect URI you
 send at authorization time must *start with* the one you registered here.
 
-### 2. Set the environment variables
+> **You do not need a signing key.** Meetup's docs describe four flows; only the
+> separate **JWT Flow** uses an RSA signing key ("a JWT signed with a private RSA
+> key obtained from a previous signing key creation step"). This app implements
+> the **Server Flow**, which the docs describe as being "for applications that
+> are capable of securely storing consumer secrets and target interactive member
+> authentication" — client id + secret + authorization code, nothing else.
+
+#### 2. Set the environment variables
 
 ```sh
 export MEETUP_CLIENT_ID='<your consumer key>'
@@ -44,7 +75,7 @@ export MEETUP_REDIRECT_URI='http://localhost:5000/oauth2/callback'
 
 Every variable the app reads is documented in [`.env.example`](.env.example).
 
-### 3. Install
+#### 3. Install
 
 ```sh
 make install     # uv venv + requirements-dev.txt + pre-commit hooks
@@ -56,7 +87,7 @@ or, without the dev tooling:
 pip install -r requirements.txt
 ```
 
-### 4. Authorize once, in a browser
+#### 4. Authorize once, in a browser
 
 ```sh
 make serve                       # http://localhost:5000
@@ -77,7 +108,7 @@ that replaces the cached one.
 > replacement atomically. Don't hand-edit or copy `.token_cache.json` around; if
 > it does get invalidated, delete it and run `/oauth2/login` again.
 
-### 5. Use it
+### Use it
 
 ```sh
 make run                         # dump the .ics to stdout
@@ -96,8 +127,10 @@ or subscribe your calendar to `http://localhost:5000/calendar/`.
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `MEETUP_CLIENT_ID` | yes | — | OAuth consumer key |
-| `MEETUP_CLIENT_SECRET` | yes | — | OAuth consumer secret |
+| `MEETUP_EVENT_SOURCE` | no | `graphql` | `graphql` or `ics` |
+| `MEETUP_GROUP_SLUGS` | for `ics` | — | comma-separated group slugs |
+| `MEETUP_CLIENT_ID` | for `graphql` | — | OAuth consumer key |
+| `MEETUP_CLIENT_SECRET` | for `graphql` | — | OAuth consumer secret |
 | `MEETUP_REDIRECT_URI` | no | `http://localhost:5000/oauth2/callback` | must match what you registered |
 | `MEETUP_TOKEN_CACHE` | no | `.token_cache.json` | where the token pair is persisted |
 | `MEETUP_API_URL` | no | `https://api.meetup.com/gql-ext` | GraphQL endpoint override |
@@ -136,6 +169,7 @@ disk.
 | `app.py` | Flask routes, GraphQL-event → VEVENT conversion, feed caching |
 | `meetup_auth.py` | OAuth2 server flow: authorize URL, code exchange, refresh, token cache |
 | `meetup_api.py` | GraphQL client + the two queries that replace the old REST calls |
+| `meetup_ics.py` | the no-auth path: fetch and merge public per-group ICS exports |
 | `tests/` | pytest suite; every HTTP call is mocked, no live credentials needed |
 
 ## Development
