@@ -1,0 +1,1 @@
+../../.agent-hooks/lockfile-drift-guard.sh

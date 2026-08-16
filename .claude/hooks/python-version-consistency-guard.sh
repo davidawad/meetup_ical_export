@@ -1,0 +1,1 @@
+../../.agent-hooks/python-version-consistency-guard.sh

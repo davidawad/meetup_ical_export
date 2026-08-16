@@ -1,0 +1,71 @@
+# See https://pre-commit.com/ for hook docs.
+# Install: pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg --hook-type post-commit
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: ["--maxkb=512"]
+      - id: detect-private-key
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: typecheck
+        name: typecheck (pyright)
+        entry: uvx pyright
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: []
+
+  - repo: local
+    hooks:
+      - id: check-branch-worktree
+        name: check branch/worktree (swe-engineering-standards)
+        entry: scripts/git-hooks/check-branch-worktree.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+
+  - repo: local
+    hooks:
+      - id: push-after-commit
+        name: push after commit (swe-engineering-standards)
+        entry: scripts/git-hooks/push-after-commit.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+        stages: [post-commit]
+        verbose: true
+
+  - repo: local
+    hooks:
+      - id: dependency-freshness-check
+        name: dependency freshness check (dot-5nb)
+        entry: scripts/git-hooks/dependency-freshness-check.sh
+        language: script
+        pass_filenames: false
+        always_run: true

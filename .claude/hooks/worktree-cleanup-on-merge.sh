@@ -1,0 +1,1 @@
+../../.agent-hooks/worktree-cleanup-on-merge.sh

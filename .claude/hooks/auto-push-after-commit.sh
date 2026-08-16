@@ -1,0 +1,1 @@
+../../.agent-hooks/auto-push-after-commit.sh

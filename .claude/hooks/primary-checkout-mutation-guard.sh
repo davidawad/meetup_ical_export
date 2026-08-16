@@ -1,0 +1,1 @@
+../../.agent-hooks/primary-checkout-mutation-guard.sh

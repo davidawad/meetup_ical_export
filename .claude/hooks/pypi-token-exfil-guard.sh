@@ -1,0 +1,1 @@
+../../.agent-hooks/pypi-token-exfil-guard.sh

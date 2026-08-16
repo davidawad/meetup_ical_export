@@ -1,0 +1,1 @@
+../../.agent-hooks/osv-scanner-gate.sh

@@ -1,0 +1,1 @@
+../../.agent-hooks/conventional-commits-guard.sh

@@ -1,0 +1,1 @@
+../../.agent-hooks/credential-exfil-guard.sh

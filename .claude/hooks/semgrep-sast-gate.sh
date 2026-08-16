@@ -1,0 +1,1 @@
+../../.agent-hooks/semgrep-sast-gate.sh

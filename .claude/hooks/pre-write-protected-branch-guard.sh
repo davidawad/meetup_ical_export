@@ -1,0 +1,1 @@
+../../.agent-hooks/pre-write-protected-branch-guard.sh
