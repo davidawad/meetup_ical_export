@@ -142,3 +142,4 @@ dmypy.json
 *.db
 .beads-credential-key
 .beads/proxieddb/
+.beads/interactions.jsonl
