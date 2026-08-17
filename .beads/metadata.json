@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "meetup_ical_export",
+  "project_id": "fc60bf3c-afbb-4deb-9d93-22f801f04af2"
+}

@@ -136,3 +136,9 @@ dmypy.json
 
 # Heroku reads .python-version to pick the runtime — it must stay tracked.
 !.python-version
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
