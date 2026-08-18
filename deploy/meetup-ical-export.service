@@ -1,0 +1,26 @@
+[Unit]
+Description=meetup_ical_export — serves this account's Meetup groups as one ICS feed
+Documentation=file:%h/projects/PERSONAL/meetup_ical_export/readme.md
+
+[Service]
+Type=simple
+ExecStart=%h/projects/PERSONAL/meetup_ical_export/.venv/bin/python %h/projects/PERSONAL/meetup_ical_export/app.py --serve
+WorkingDirectory=%h/projects/PERSONAL/meetup_ical_export
+Environment=PORT=8421
+# ics mode: no OAuth credentials needed (see readme's "Quick start, no
+# account setup" section). Switch to MEETUP_EVENT_SOURCE=graphql once
+# MEETUP_CLIENT_ID/MEETUP_CLIENT_SECRET are registered and the one-time
+# /oauth2/login authorization has run (meetup_ical_export-idg) — graphql
+# auto-discovers every group David belongs to instead of this hand-
+# maintained list, and gives real venue addresses.
+Environment=MEETUP_EVENT_SOURCE=ics
+# Union of every group slug found across you-local-events-scanner's
+# locations as of 2026-08-17 (edison-nj, austin-tx, dallas-tx, dubai-uae)
+# — see that skill's config/sources.yaml `meetup` adapter entries for
+# per-location breakdowns and provenance notes on each group.
+Environment=MEETUP_GROUP_SLUGS=central-nj-drupal-group,njtech,austin-developer-community,austin-startup-meetup,aittg-austin,austin-arts-collective,dallas-software-developers-meetup,dallas-ai-ml-data-developers-group,dallas-technology-meetup,dubai-startup-founder-101,dubai-tech-entrepreneurs-hangout,startups-and-tech-events-in-dubai,uae-tech-meetup,dubai-tech-talks
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
